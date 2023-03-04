@@ -3,8 +3,10 @@
 */
 #pragma
 
+#include "rm_msgs/DbusData.h"
 #include "rqt_virtual_dbus/joy_stick.h"
 #include "rqt_virtual_dbus/slip_button.h"
+#include <QMessageBox>
 #include <rqt_gui_cpp/plugin.h>
 #include <rqt_virtual_dbus/ui_VirtualJoy.h>
 
@@ -28,11 +30,9 @@ public:
   void topicNameUpdated();
   void updatePublisher();
   void startIntervalTimer();
-  void publishCheckboxChanged();
+  void slipButtonChanged();
   void publishRateSpinBoxChanged();
   void updateROSPublishState();
-  void indexChanged();
-  void updateJoyPosLabel();
   // Comment in to signal that the plugin has a way to configure it
   // bool hasConfiguration() const;
   // void triggerConfiguration();
@@ -42,5 +42,12 @@ private:
   JoyStick *joy_stick_left_{}, *joy_stick_right_{};
   SlipButton *slip_button_;
   QWidget *widget_;
+
+  rm_msgs::DbusData dbus_pub_data_;
+  ros::Publisher dbus_pub_;
+  QTimer *pub_timer_;
+  QString topic_name_;
+  bool allow_pub_;
+  int pub_rate_;
 };
 } // namespace rqt_virtual_dbus

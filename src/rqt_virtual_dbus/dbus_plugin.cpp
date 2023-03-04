@@ -28,15 +28,29 @@ void MyPlugin::initPlugin(qt_gui_cpp::PluginContext &context) {
                             (' (%d)' % context.serialNumber()));
   context.addWidget(widget_);
 
-  ui_.topicLineEdit->setText("/");
+  ui_.topicLineEdit->setText("/dbus");
+  topic_name_ = ui_.topicLineEdit->text();
   joy_stick_left_ = new JoyStick(ui_.joy);
   joy_stick_right_ = new JoyStick(ui_.joy_3);
   slip_button_ = new SlipButton(ui_.slipButton);
+
+  pub_rate_ = ui_.rateSpinBox->value();
+  pub_timer_ = new QTimer(this);
+  topicNameUpdated();
 
   connect(this->joy_stick_left_, &JoyStick::pointMoved, this,
           &MyPlugin::getLeftJoyValue);
   connect(this->joy_stick_right_, &JoyStick::pointMoved, this,
           &MyPlugin::getRightJoyValue);
+  connect(ui_.topicLineEdit, &QLineEdit::editingFinished, this,
+          &MyPlugin::topicNameUpdated);
+  connect(ui_.rateSpinBox, &QSpinBox::editingFinished, this,
+          &MyPlugin::publishRateSpinBoxChanged);
+  connect(this->pub_timer_, &QTimer::timeout, this, &MyPlugin::updatePublisher);
+  connect(this->pub_timer_, &QTimer::timeout, this,
+          &MyPlugin::updateROSPublishState);
+  connect(this->slip_button_, &SlipButton::stateChanged, this,
+          &MyPlugin::slipButtonChanged);
 }
 
 void MyPlugin::shutdownPlugin() {
@@ -65,6 +79,61 @@ void MyPlugin::getJoyValue(JoyStick *joy, QLabel *joyPosLabel) {
   QString text = "(" + QString::number(joy->x_display_) + "," +
                  QString::number(joy->y_display_) + ")";
   joyPosLabel->setText(text);
+}
+
+void MyPlugin::topicNameUpdated() {
+  ros::NodeHandle nh;
+  if (ui_.topicLineEdit->text().toStdString() == "/" ||
+      ui_.topicLineEdit->text().toStdString().c_str()[0] != '/') {
+    ui_.topicLineEdit->setText(topic_name_);
+    QMessageBox::warning(nullptr, "warn", "Please provide a useful topic name");
+  }
+  dbus_pub_ = nh.advertise<rm_msgs::DbusData>(topic_name_.toStdString(), 1);
+  topic_name_ = ui_.topicLineEdit->text();
+}
+
+void MyPlugin::updatePublisher() {
+  if (slip_button_->getState()) {
+    dbus_pub_data_.ch_l_x = joy_stick_left_->x_display_;
+    dbus_pub_data_.ch_l_y = joy_stick_left_->y_display_;
+    dbus_pub_data_.ch_r_x = joy_stick_right_->x_display_;
+    dbus_pub_data_.ch_r_y = joy_stick_right_->y_display_;
+    dbus_pub_data_.stamp = ros::Time::now();
+  }
+}
+
+void MyPlugin::startIntervalTimer() {
+  pub_timer_->start(1000 / pub_rate_);
+  pub_timer_->setSingleShot(false);
+}
+
+void MyPlugin::slipButtonChanged() {
+  if (slip_button_->getState()) {
+    if (ui_.topicLineEdit->text().toStdString() == "/" ||
+        ui_.topicLineEdit->text().toStdString().c_str()[0] != '/') {
+      QMessageBox::warning(
+          nullptr, "dbus blocked",
+          "Please provide a useful topic name and restart dbus");
+      pub_timer_->stop();
+      return;
+    }
+    startIntervalTimer();
+  } else {
+    pub_timer_->stop();
+  }
+}
+
+void MyPlugin::publishRateSpinBoxChanged() {
+  pub_rate_ = ui_.rateSpinBox->value();
+  if (slip_button_->getState() && pub_timer_->isActive()) {
+    startIntervalTimer();
+  }
+}
+
+void MyPlugin::updateROSPublishState() {
+  if (slip_button_->getState()) {
+    dbus_pub_.publish(dbus_pub_data_);
+  }
 }
 
 } // namespace rqt_virtual_dbus

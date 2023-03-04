@@ -101,21 +101,9 @@
        <number>2</number>
       </property>
       <item>
-       <widget class="QCheckBox" name="publishCheckBox">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="minimumSize">
-         <size>
-          <width>40</width>
-          <height>20</height>
-         </size>
-        </property>
+       <widget class="QLabel" name="label_3">
         <property name="text">
-         <string>Publish</string>
+         <string>Frequence:</string>
         </property>
        </widget>
       </item>

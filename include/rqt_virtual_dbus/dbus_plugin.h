@@ -38,6 +38,8 @@ public:
   void publishRateSpinBoxChanged();
   void updateROSPublishState();
   void updateSwitchState();
+  void startWheelResetTimer();
+  void updateWheelState();
   // Comment in to signal that the plugin has a way to configure it
   // bool hasConfiguration() const;
   // void triggerConfiguration();
@@ -50,7 +52,7 @@ private:
 
   rm_msgs::DbusData dbus_pub_data_;
   ros::Publisher dbus_pub_;
-  QTimer *pub_timer_;
+  QTimer *pub_timer_, *wheel_timer_;
   QString topic_name_;
   bool allow_pub_;
   int pub_rate_;

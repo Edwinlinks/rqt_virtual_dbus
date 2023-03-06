@@ -36,6 +36,7 @@ void MyPlugin::initPlugin(qt_gui_cpp::PluginContext &context) {
 
   pub_rate_ = ui_.rateSpinBox->value();
   pub_timer_ = new QTimer(this);
+  wheel_timer_ = new QTimer(this);
   topicNameUpdated();
 
   connect(this->joy_stick_left_, &JoyStick::pointMoved, this,
@@ -55,6 +56,10 @@ void MyPlugin::initPlugin(qt_gui_cpp::PluginContext &context) {
           &MyPlugin::updateSwitchState);
   connect(ui_.right_switch, &QScrollBar::valueChanged, this,
           &MyPlugin::updateSwitchState);
+  connect(ui_.wheel, &QDial::sliderReleased, this,
+          &MyPlugin::startWheelResetTimer);
+  connect(this->wheel_timer_, &QTimer::timeout, this,
+          &MyPlugin::updateWheelState);
 }
 
 void MyPlugin::shutdownPlugin() {
@@ -125,6 +130,7 @@ void MyPlugin::updatePublisher() {
       dbus_pub_data_.s_r = rm_msgs::DbusData::DOWN;
       break;
     }
+    dbus_pub_data_.wheel = (50 - ui_.wheel->value()) / 50.0;
     dbus_pub_data_.stamp = ros::Time::now();
   }
 }
@@ -180,6 +186,22 @@ void MyPlugin::updateSwitchState() {
     ui_.right_switch->setValue(SwitchState::MID);
   else if (70 <= right_value && right_value < 100)
     ui_.right_switch->setValue(SwitchState::DOWN);
+}
+
+void MyPlugin::startWheelResetTimer() {
+  if (ui_.wheel->value() != 50)
+    wheel_timer_->start(20);
+  else
+    wheel_timer_->stop();
+}
+
+void MyPlugin::updateWheelState() {
+  if (!ui_.wheel->underMouse()) {
+    if (abs(ui_.wheel->value() - 50.0) < 2)
+      ui_.wheel->setValue(50);
+    else
+      ui_.wheel->setValue(50 - (50 - ui_.wheel->value()) / 2);
+  }
 }
 
 } // namespace rqt_virtual_dbus

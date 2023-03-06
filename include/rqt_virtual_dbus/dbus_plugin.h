@@ -3,18 +3,22 @@
 */
 #pragma
 
+#include <QMessageBox>
+#include <QScrollBar>
+#include <QTextBrowser>
+#include <rqt_gui_cpp/plugin.h>
+#include <rqt_virtual_dbus/ui_VirtualJoy.h>
+
 #include "rm_msgs/DbusData.h"
 #include "rqt_virtual_dbus/joy_stick.h"
 #include "rqt_virtual_dbus/slip_button.h"
-#include <QMessageBox>
-#include <rqt_gui_cpp/plugin.h>
-#include <rqt_virtual_dbus/ui_VirtualJoy.h>
 
 namespace rqt_virtual_dbus {
 
 class MyPlugin : public rqt_gui_cpp::Plugin {
   Q_OBJECT
 public:
+  enum SwitchState { UP = 0, MID = 50, DOWN = 99 };
   MyPlugin();
   void initPlugin(qt_gui_cpp::PluginContext &context) override;
   void shutdownPlugin() override;
@@ -33,6 +37,7 @@ public:
   void slipButtonChanged();
   void publishRateSpinBoxChanged();
   void updateROSPublishState();
+  void updateSwitchState();
   // Comment in to signal that the plugin has a way to configure it
   // bool hasConfiguration() const;
   // void triggerConfiguration();

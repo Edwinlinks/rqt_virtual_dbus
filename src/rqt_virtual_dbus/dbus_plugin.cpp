@@ -51,6 +51,10 @@ void MyPlugin::initPlugin(qt_gui_cpp::PluginContext &context) {
           &MyPlugin::updateROSPublishState);
   connect(this->slip_button_, &SlipButton::stateChanged, this,
           &MyPlugin::slipButtonChanged);
+  connect(ui_.left_switch, &QScrollBar::valueChanged, this,
+          &MyPlugin::updateSwitchState);
+  connect(ui_.right_switch, &QScrollBar::valueChanged, this,
+          &MyPlugin::updateSwitchState);
 }
 
 void MyPlugin::shutdownPlugin() {
@@ -98,6 +102,29 @@ void MyPlugin::updatePublisher() {
     dbus_pub_data_.ch_l_y = joy_stick_left_->y_display_;
     dbus_pub_data_.ch_r_x = joy_stick_right_->x_display_;
     dbus_pub_data_.ch_r_y = joy_stick_right_->y_display_;
+
+    switch (ui_.left_switch->value()) {
+    case SwitchState::UP:
+      dbus_pub_data_.s_l = rm_msgs::DbusData::UP;
+      break;
+    case SwitchState::MID:
+      dbus_pub_data_.s_l = rm_msgs::DbusData::MID;
+      break;
+    case SwitchState::DOWN:
+      dbus_pub_data_.s_l = rm_msgs::DbusData::DOWN;
+      break;
+    }
+    switch (ui_.right_switch->value()) {
+    case SwitchState::UP:
+      dbus_pub_data_.s_r = rm_msgs::DbusData::UP;
+      break;
+    case SwitchState::MID:
+      dbus_pub_data_.s_r = rm_msgs::DbusData::MID;
+      break;
+    case SwitchState::DOWN:
+      dbus_pub_data_.s_r = rm_msgs::DbusData::DOWN;
+      break;
+    }
     dbus_pub_data_.stamp = ros::Time::now();
   }
 }
@@ -134,6 +161,25 @@ void MyPlugin::updateROSPublishState() {
   if (slip_button_->getState()) {
     dbus_pub_.publish(dbus_pub_data_);
   }
+}
+
+void MyPlugin::updateSwitchState() {
+  int left_value = ui_.left_switch->value(),
+      right_value = ui_.right_switch->value();
+
+  if (0 <= left_value && left_value < 30)
+    ui_.left_switch->setValue(SwitchState::UP);
+  else if (30 <= left_value && left_value < 70)
+    ui_.left_switch->setValue(SwitchState::MID);
+  else if (70 <= left_value && left_value < 100)
+    ui_.left_switch->setValue(SwitchState::DOWN);
+
+  if (0 <= right_value && right_value < 30)
+    ui_.right_switch->setValue(SwitchState::UP);
+  else if (30 <= right_value && right_value < 70)
+    ui_.right_switch->setValue(SwitchState::MID);
+  else if (70 <= right_value && right_value < 100)
+    ui_.right_switch->setValue(SwitchState::DOWN);
 }
 
 } // namespace rqt_virtual_dbus

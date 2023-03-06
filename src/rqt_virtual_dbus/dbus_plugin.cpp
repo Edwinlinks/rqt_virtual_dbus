@@ -28,7 +28,7 @@ void MyPlugin::initPlugin(qt_gui_cpp::PluginContext &context) {
                             (' (%d)' % context.serialNumber()));
   context.addWidget(widget_);
 
-  ui_.topicLineEdit->setText("/dbus");
+  ui_.topicLineEdit->setText("/dbus_data");
   topic_name_ = ui_.topicLineEdit->text();
   joy_stick_left_ = new JoyStick(ui_.joy);
   joy_stick_right_ = new JoyStick(ui_.joy_3);
@@ -151,8 +151,6 @@ void MyPlugin::slipButtonChanged() {
       return;
     }
     startIntervalTimer();
-  } else {
-    pub_timer_->stop();
   }
 }
 
@@ -163,11 +161,7 @@ void MyPlugin::publishRateSpinBoxChanged() {
   }
 }
 
-void MyPlugin::updateROSPublishState() {
-  if (slip_button_->getState()) {
-    dbus_pub_.publish(dbus_pub_data_);
-  }
-}
+void MyPlugin::updateROSPublishState() { dbus_pub_.publish(dbus_pub_data_); }
 
 void MyPlugin::updateSwitchState() {
   int left_value = ui_.left_switch->value(),

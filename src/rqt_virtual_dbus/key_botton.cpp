@@ -8,8 +8,6 @@ KeyboardButton::KeyboardButton(QWidget *parent) : QRadioButton(parent) {
   resize(parent->width(), parent->height());
   this->setText("Use keyboard");
 
-  has_libinput_ = HAS_LIBINPUT;
-
   focus_timer_ = new QTimer(this);
   connect(this, &QRadioButton::clicked, this, &KeyboardButton::updateState);
   connect(this->focus_timer_, &QTimer::timeout, this,
@@ -38,6 +36,9 @@ void KeyboardButton::resizeEvent(QResizeEvent *event) {
 }
 
 void KeyboardButton::keyPressEvent(QKeyEvent *ev) {
+  if (!slip_state_)
+    return;
+
   switch (ev->key()) {
   case Qt::Key_W:
     dbus_data_->key_w = true;
@@ -91,6 +92,9 @@ void KeyboardButton::keyPressEvent(QKeyEvent *ev) {
 }
 
 void KeyboardButton::keyReleaseEvent(QKeyEvent *ev) {
+  if (!slip_state_)
+    return;
+
   switch (ev->key()) {
   case Qt::Key_W:
     dbus_data_->key_w = false;
@@ -140,5 +144,15 @@ void KeyboardButton::keyReleaseEvent(QKeyEvent *ev) {
   case Qt::Key_B:
     dbus_data_->key_b = false;
     break;
+  }
+}
+
+void KeyboardButton::mouseMoveEvent(QMouseEvent *ev) {}
+
+void KeyboardButton::focusOutEvent(QFocusEvent *event) {
+  QRadioButton::focusOutEvent(event);
+  if (read_keyboard_) {
+    // 保持焦点
+    activateWindow();
   }
 }

@@ -62,6 +62,9 @@ void MyPlugin::initPlugin(qt_gui_cpp::PluginContext &context) {
           &MyPlugin::startWheelResetTimer);
   connect(this->wheel_timer_, &QTimer::timeout, this,
           &MyPlugin::updateWheelState);
+
+  connect(this, &MyPlugin::slipChange, this->key_button_,
+          &KeyboardButton::updateSlip);
 }
 
 void MyPlugin::shutdownPlugin() {
@@ -153,6 +156,9 @@ void MyPlugin::slipButtonChanged() {
       return;
     }
     startIntervalTimer();
+    emit slipChange(true);
+  } else {
+    emit slipChange(false);
   }
 }
 

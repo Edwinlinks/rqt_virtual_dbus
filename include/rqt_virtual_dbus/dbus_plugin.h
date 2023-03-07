@@ -44,6 +44,8 @@ public:
   // Comment in to signal that the plugin has a way to configure it
   // bool hasConfiguration() const;
   // void triggerConfiguration();
+signals:
+  void slipChange(bool);
 
 private:
   Ui::Form ui_{};
@@ -56,7 +58,6 @@ private:
   ros::Publisher dbus_pub_;
   QTimer *pub_timer_, *wheel_timer_;
   QString topic_name_;
-  bool allow_pub_;
   int pub_rate_;
 };
 } // namespace rqt_virtual_dbus

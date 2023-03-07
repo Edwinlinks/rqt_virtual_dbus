@@ -12,15 +12,6 @@
 #include <QWidget>
 #include <ros/ros.h>
 
-#ifdef __has_include // 检查 __has_include 宏是否可用
-#if __has_include(<libinput.h>)
-#include <libinput.h>
-#define HAS_LIBINPUT true
-#endif
-#else
-#define HAS_LIBINPUT false
-#endif
-
 #include "rm_msgs/DbusData.h"
 
 class KeyboardButton : public QRadioButton {
@@ -31,17 +22,19 @@ public:
   ~KeyboardButton();
 
   void setDbusData(rm_msgs::DbusData *data) { dbus_data_ = data; }
+  void updateSlip(bool state) { slip_state_ = state; }
   void updateState();
   void focusButton();
 
 protected:
   void keyPressEvent(QKeyEvent *ev) override;
   void keyReleaseEvent(QKeyEvent *ev) override;
-  void resizeEvent(QResizeEvent *event) override;
+  void resizeEvent(QResizeEvent *ev) override;
+  void focusOutEvent(QFocusEvent *ev) override;
+  void mouseMoveEvent(QMouseEvent *ev) override;
 
 private:
-  bool has_libinput_;
-  bool read_keyboard_ = false;
+  bool slip_state_, read_keyboard_ = false;
   rm_msgs::DbusData *dbus_data_;
   QTimer *focus_timer_;
 };

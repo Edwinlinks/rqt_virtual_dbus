@@ -33,6 +33,8 @@ void MyPlugin::initPlugin(qt_gui_cpp::PluginContext &context) {
   joy_stick_left_ = new JoyStick(ui_.joy);
   joy_stick_right_ = new JoyStick(ui_.joy_3);
   slip_button_ = new SlipButton(ui_.slipButton);
+  key_button_ = new KeyboardButton(ui_.key_widget);
+  key_button_->setDbusData(&dbus_pub_data_);
 
   pub_rate_ = ui_.rateSpinBox->value();
   pub_timer_ = new QTimer(this);

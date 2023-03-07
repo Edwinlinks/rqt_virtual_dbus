@@ -11,6 +11,7 @@
 
 #include "rm_msgs/DbusData.h"
 #include "rqt_virtual_dbus/joy_stick.h"
+#include "rqt_virtual_dbus/key_button.h"
 #include "rqt_virtual_dbus/slip_button.h"
 
 namespace rqt_virtual_dbus {
@@ -48,6 +49,7 @@ private:
   Ui::Form ui_{};
   JoyStick *joy_stick_left_{}, *joy_stick_right_{};
   SlipButton *slip_button_;
+  KeyboardButton *key_button_;
   QWidget *widget_;
 
   rm_msgs::DbusData dbus_pub_data_;

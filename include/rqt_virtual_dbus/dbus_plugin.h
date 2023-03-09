@@ -20,6 +20,8 @@ class MyPlugin : public rqt_gui_cpp::Plugin {
   Q_OBJECT
 public:
   enum SwitchState { UP = 0, MID = 50, DOWN = 99 };
+  enum ControlMode { IDLE, RC, PC };
+
   MyPlugin();
   void initPlugin(qt_gui_cpp::PluginContext &context) override;
   void shutdownPlugin() override;
@@ -58,6 +60,6 @@ private:
   ros::Publisher dbus_pub_;
   QTimer *pub_timer_, *wheel_timer_;
   QString topic_name_;
-  int pub_rate_;
+  int pub_rate_, state_ = ControlMode::IDLE;
 };
 } // namespace rqt_virtual_dbus

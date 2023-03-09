@@ -37,6 +37,7 @@ void MyPlugin::initPlugin(qt_gui_cpp::PluginContext &context) {
   key_button_->setDbusData(&dbus_pub_data_);
 
   pub_rate_ = ui_.rateSpinBox->value();
+  state_ = ControlMode::RC;
   pub_timer_ = new QTimer(this);
   wheel_timer_ = new QTimer(this);
   topicNameUpdated();
@@ -108,6 +109,11 @@ void MyPlugin::topicNameUpdated() {
 
 void MyPlugin::updatePublisher() {
   if (slip_button_->getState()) {
+    if (state_ == ControlMode::PC) {
+      dbus_pub_data_.m_x = joy_stick_left_->x_display_;
+      dbus_pub_data_.m_y = -joy_stick_left_->y_display_;
+    }
+
     dbus_pub_data_.ch_l_x = joy_stick_left_->x_display_;
     dbus_pub_data_.ch_l_y = joy_stick_left_->y_display_;
     dbus_pub_data_.ch_r_x = joy_stick_right_->x_display_;
@@ -175,6 +181,7 @@ void MyPlugin::updateSwitchState() {
   int left_value = ui_.left_switch->value(),
       right_value = ui_.right_switch->value();
 
+  //拨杆归位
   if (0 <= left_value && left_value < 30)
     ui_.left_switch->setValue(SwitchState::UP);
   else if (30 <= left_value && left_value < 70)
@@ -188,6 +195,19 @@ void MyPlugin::updateSwitchState() {
     ui_.right_switch->setValue(SwitchState::MID);
   else if (70 <= right_value && right_value < 100)
     ui_.right_switch->setValue(SwitchState::DOWN);
+
+  //匹配控制模式
+  switch (ui_.right_switch->value()) {
+  case SwitchState::UP:
+    state_ = ControlMode::PC;
+    break;
+  case SwitchState::MID:
+    state_ = ControlMode::RC;
+    break;
+  default:
+    state_ = ControlMode::IDLE;
+    break;
+  }
 }
 
 void MyPlugin::startWheelResetTimer() {

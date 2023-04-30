@@ -22,6 +22,8 @@ void SlipButton::mousePressEvent(QMouseEvent *event) {
   if (event->button() == Qt::LeftButton) {
     isOn = !isOn;
     timer.start();
+
+    emit stateChanged();
   }
   return QWidget::mousePressEvent(event);
 }

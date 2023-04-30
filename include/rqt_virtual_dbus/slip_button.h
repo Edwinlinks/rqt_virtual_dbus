@@ -15,6 +15,9 @@ class SlipButton : public QWidget {
 public:
   explicit SlipButton(QWidget *parent = nullptr);
   ~SlipButton();
+  bool getState() { return isOn; };
+signals:
+  void stateChanged();
 
 private:
   void paintEvent(QPaintEvent *event) override;

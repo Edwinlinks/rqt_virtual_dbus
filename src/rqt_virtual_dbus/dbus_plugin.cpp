@@ -28,15 +28,45 @@ void MyPlugin::initPlugin(qt_gui_cpp::PluginContext &context) {
                             (' (%d)' % context.serialNumber()));
   context.addWidget(widget_);
 
-  ui_.topicLineEdit->setText("/");
+  ui_.rateSpinBox->setValue(100);
+  ui_.topicLineEdit->setText("/dbus_data");
+  topic_name_ = ui_.topicLineEdit->text();
   joy_stick_left_ = new JoyStick(ui_.joy);
   joy_stick_right_ = new JoyStick(ui_.joy_3);
   slip_button_ = new SlipButton(ui_.slipButton);
+  key_button_ = new KeyboardButton(ui_.key_widget);
+  key_button_->setDbusData(&dbus_pub_data_);
+
+  pub_rate_ = ui_.rateSpinBox->value();
+  state_ = ControlMode::RC;
+  pub_timer_ = new QTimer(this);
+  wheel_timer_ = new QTimer(this);
+  topicNameUpdated();
 
   connect(this->joy_stick_left_, &JoyStick::pointMoved, this,
           &MyPlugin::getLeftJoyValue);
   connect(this->joy_stick_right_, &JoyStick::pointMoved, this,
           &MyPlugin::getRightJoyValue);
+  connect(ui_.topicLineEdit, &QLineEdit::editingFinished, this,
+          &MyPlugin::topicNameUpdated);
+  connect(ui_.rateSpinBox, &QSpinBox::editingFinished, this,
+          &MyPlugin::publishRateSpinBoxChanged);
+  connect(this->pub_timer_, &QTimer::timeout, this, &MyPlugin::updatePublisher);
+  connect(this->pub_timer_, &QTimer::timeout, this,
+          &MyPlugin::updateROSPublishState);
+  connect(this->slip_button_, &SlipButton::stateChanged, this,
+          &MyPlugin::slipButtonChanged);
+  connect(ui_.left_switch, &QScrollBar::valueChanged, this,
+          &MyPlugin::updateSwitchState);
+  connect(ui_.right_switch, &QScrollBar::valueChanged, this,
+          &MyPlugin::updateSwitchState);
+  connect(ui_.wheel, &QDial::sliderReleased, this,
+          &MyPlugin::startWheelResetTimer);
+  connect(this->wheel_timer_, &QTimer::timeout, this,
+          &MyPlugin::updateWheelState);
+
+  connect(this, &MyPlugin::slipChange, this->key_button_,
+          &KeyboardButton::updateSlip);
 }
 
 void MyPlugin::shutdownPlugin() {
@@ -65,6 +95,136 @@ void MyPlugin::getJoyValue(JoyStick *joy, QLabel *joyPosLabel) {
   QString text = "(" + QString::number(joy->x_display_) + "," +
                  QString::number(joy->y_display_) + ")";
   joyPosLabel->setText(text);
+}
+
+void MyPlugin::topicNameUpdated() {
+  ros::NodeHandle nh;
+  if (ui_.topicLineEdit->text().toStdString() == "/" ||
+      ui_.topicLineEdit->text().toStdString().c_str()[0] != '/') {
+    ui_.topicLineEdit->setText(topic_name_);
+    QMessageBox::warning(nullptr, "warn", "Please provide a useful topic name");
+  }
+  dbus_pub_ = nh.advertise<rm_msgs::DbusData>(topic_name_.toStdString(), 1);
+  topic_name_ = ui_.topicLineEdit->text();
+}
+
+void MyPlugin::updatePublisher() {
+  if (slip_button_->getState()) {
+    if (state_ == ControlMode::PC) {
+      dbus_pub_data_.m_x = joy_stick_left_->x_display_;
+      dbus_pub_data_.m_y = -joy_stick_left_->y_display_;
+    }
+
+    dbus_pub_data_.ch_l_x = joy_stick_left_->x_display_;
+    dbus_pub_data_.ch_l_y = joy_stick_left_->y_display_;
+    dbus_pub_data_.ch_r_x = joy_stick_right_->x_display_;
+    dbus_pub_data_.ch_r_y = joy_stick_right_->y_display_;
+
+    switch (ui_.left_switch->value()) {
+    case SwitchState::UP:
+      dbus_pub_data_.s_l = rm_msgs::DbusData::UP;
+      break;
+    case SwitchState::MID:
+      dbus_pub_data_.s_l = rm_msgs::DbusData::MID;
+      break;
+    case SwitchState::DOWN:
+      dbus_pub_data_.s_l = rm_msgs::DbusData::DOWN;
+      break;
+    }
+    switch (ui_.right_switch->value()) {
+    case SwitchState::UP:
+      dbus_pub_data_.s_r = rm_msgs::DbusData::UP;
+      break;
+    case SwitchState::MID:
+      dbus_pub_data_.s_r = rm_msgs::DbusData::MID;
+      break;
+    case SwitchState::DOWN:
+      dbus_pub_data_.s_r = rm_msgs::DbusData::DOWN;
+      break;
+    }
+    dbus_pub_data_.wheel = (50 - ui_.wheel->value()) / 50.0;
+    dbus_pub_data_.stamp = ros::Time::now();
+  }
+}
+
+void MyPlugin::startIntervalTimer() {
+  pub_timer_->start(1000 / pub_rate_);
+  pub_timer_->setSingleShot(false);
+}
+
+void MyPlugin::slipButtonChanged() {
+  if (slip_button_->getState()) {
+    if (ui_.topicLineEdit->text().toStdString() == "/" ||
+        ui_.topicLineEdit->text().toStdString().c_str()[0] != '/') {
+      QMessageBox::warning(
+          nullptr, "dbus blocked",
+          "Please provide a useful topic name and restart dbus");
+      pub_timer_->stop();
+      return;
+    }
+    startIntervalTimer();
+    emit slipChange(true);
+  } else {
+    emit slipChange(false);
+  }
+}
+
+void MyPlugin::publishRateSpinBoxChanged() {
+  pub_rate_ = ui_.rateSpinBox->value();
+  if (slip_button_->getState() && pub_timer_->isActive()) {
+    startIntervalTimer();
+  }
+}
+
+void MyPlugin::updateROSPublishState() { dbus_pub_.publish(dbus_pub_data_); }
+
+void MyPlugin::updateSwitchState() {
+  int left_value = ui_.left_switch->value(),
+      right_value = ui_.right_switch->value();
+
+  //拨杆归位
+  if (0 <= left_value && left_value < 30)
+    ui_.left_switch->setValue(SwitchState::UP);
+  else if (30 <= left_value && left_value < 70)
+    ui_.left_switch->setValue(SwitchState::MID);
+  else if (70 <= left_value && left_value < 100)
+    ui_.left_switch->setValue(SwitchState::DOWN);
+
+  if (0 <= right_value && right_value < 30)
+    ui_.right_switch->setValue(SwitchState::UP);
+  else if (30 <= right_value && right_value < 70)
+    ui_.right_switch->setValue(SwitchState::MID);
+  else if (70 <= right_value && right_value < 100)
+    ui_.right_switch->setValue(SwitchState::DOWN);
+
+  //匹配控制模式
+  switch (ui_.right_switch->value()) {
+  case SwitchState::UP:
+    state_ = ControlMode::PC;
+    break;
+  case SwitchState::MID:
+    state_ = ControlMode::RC;
+    break;
+  default:
+    state_ = ControlMode::IDLE;
+    break;
+  }
+}
+
+void MyPlugin::startWheelResetTimer() {
+  if (ui_.wheel->value() != 50)
+    wheel_timer_->start(20);
+  else
+    wheel_timer_->stop();
+}
+
+void MyPlugin::updateWheelState() {
+  if (!ui_.wheel->underMouse()) {
+    if (abs(ui_.wheel->value() - 50.0) < 2)
+      ui_.wheel->setValue(50);
+    else
+      ui_.wheel->setValue(50 - (50 - ui_.wheel->value()) / 2);
+  }
 }
 
 } // namespace rqt_virtual_dbus
